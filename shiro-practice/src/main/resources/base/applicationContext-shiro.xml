@@ -1,0 +1,55 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xsi:schemaLocation="http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans-4.0.xsd"
+	default-lazy-init="true">
+
+	<description>Shiro安全配置</description>
+
+	<!-- Shiro's main business-tier object for web-enabled applications -->
+	<bean id="securityManager" class="org.apache.shiro.web.mgt.DefaultWebSecurityManager">
+		<property name="sessionManager" ref="shiroSessionManager" />
+		<property name="cacheManager" ref="shiroEhcacheManager" />
+	</bean>
+	<bean id="validityChecknFilter"  class="com.coldface.shiro.ValidityCheckFilter" />
+
+	<!-- Shiro Filter -->
+	<bean id="shiroFilter" class="org.apache.shiro.spring.web.ShiroFilterFactoryBean">
+		<property name="securityManager" ref="securityManager" />
+		<property name="loginUrl" value="/login/null" />
+		<property name="successUrl" value="/" />
+		<property name="filters">
+			<map>
+				<entry key="validity" value-ref="validityChecknFilter" />
+			</map>
+		</property>
+		<property name="filterChainDefinitions">
+			<value>
+				/api/** = validity
+				/test/name/**=anon
+				/UserInfoService/**=anon
+			</value>
+		</property>
+	</bean>
+
+	<!-- 用户授权信息Cache, 采用EhCache -->
+	<bean id="shiroEhcacheManager" class="org.apache.shiro.cache.ehcache.EhCacheManager">
+		<property name="cacheManagerConfigFile" value="classpath:ehcache/ehcache-shiro.xml" />
+	</bean>
+
+	<bean id="shiroSessionManager"
+		class="org.apache.shiro.web.session.mgt.DefaultWebSessionManager">
+		<!-- 默认名称JSESSIONID与容器sessionid冲突，修改为其他名称 -->
+		<property name="sessionIdCookie.name" value="jsid" />
+		<property name="sessionDAO" ref="sessionDAO"/>
+		<!-- session超时时间：毫秒 -->
+		<property name="globalSessionTimeout" value="1800000" />
+		<!-- 由于使用了memcached作为session缓存，但memcached无法获取当前session集合， 所以sessionManager的session定时判断是否有效或超时就变得无用了 -->
+		<property name="sessionValidationSchedulerEnabled" value="false" />
+	</bean>
+	
+	<bean id="sessionDAO" class="org.apache.shiro.session.mgt.eis.EnterpriseCacheSessionDAO" />
+
+	<!-- 保证实现了Shiro内部lifecycle函数的bean执行 -->
+	<bean id="lifecycleBeanPostProcessor" class="org.apache.shiro.spring.LifecycleBeanPostProcessor" />
+</beans>
